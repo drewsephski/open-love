@@ -28,6 +28,13 @@ import HeaderWrapper from "@/components/shared/header/Wrapper/Wrapper";
 import HeaderDropdownWrapper from "@/components/shared/header/Dropdown/Wrapper/Wrapper";
 import GithubIcon from "@/components/shared/header/Github/_svg/GithubIcon";
 import ButtonUI from "@/components/ui/shadcn/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select"
 
 interface SearchResult {
   url: string;
@@ -522,17 +529,21 @@ export default function HomePage() {
                         isValidUrl ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
                       }`} style={{ transitionDelay: '400ms' }}>
                         {/* Model Dropdown */}
-                        <select
+                        <Select
                           value={selectedModel}
-                          onChange={(e) => setSelectedModel(e.target.value)}
-                          className={`px-3 py-2.5 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-heat-40 focus:outline-none focus:ring-2 focus:ring-heat-20 transition-all duration-300 hover:border-heat-20 text-sm lg:text-xs ${extendBrandStyles ? 'flex-1' : ''}`}
+                          onValueChange={(value) => setSelectedModel(value)}
                         >
-                          {models.map((model) => (
-                            <option key={model.id} value={model.id}>
-                              {model.name}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger className={`px-3 py-2.5 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-heat-40 focus:outline-none focus:ring-2 focus:ring-heat-20 transition-all duration-300 hover:border-heat-20 text-sm lg:text-xs ${extendBrandStyles ? 'flex-1' : ''}`}>
+                            <SelectValue placeholder="Select a model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {models.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
 
                         {/* Additional Instructions - Hidden when extend brand styles is enabled */}
                         {!extendBrandStyles && (
