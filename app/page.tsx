@@ -236,16 +236,6 @@ export default function HomePage() {
                 <HeaderBrandKit />
               </div>
               <div className="flex gap-8">
-                <a
-                  className="contents"
-                  href="https://github.com/mendableai/open-lovable"
-                  target="_blank"
-                >
-                  <ButtonUI variant="tertiary">
-                    <GithubIcon />
-                    Use this Template
-                  </ButtonUI>
-                </a>
               </div>
             </div>
           </HeaderWrapper>
