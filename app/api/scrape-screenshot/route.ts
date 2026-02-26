@@ -24,23 +24,70 @@ export async function POST(req: NextRequest) {
     console.log('[scrape-screenshot] Attempting to capture screenshot for:', url);
     console.log('[scrape-screenshot] Using Firecrawl API key:', apiKey ? 'Present' : 'Missing');
 
-    // Use the new v4 scrape method (not scrapeUrl)
-    const scrapeResult = await app.scrape(url, {
-      formats: ['screenshot'], // Request screenshot format
-      waitFor: 3000, // Wait for page to fully load
-      timeout: 30000,
-      onlyMainContent: false, // Get full page for screenshot
-      actions: [
-        {
-          type: 'wait',
-          milliseconds: 2000 // Additional wait for dynamic content
-        }
-      ]
-    });
+    let scrapeResult;
+    let lastError;
+
+    // Attempt 1: Fast optimized approach
+    try {
+      console.log('[scrape-screenshot] Attempt 1: Fast optimized approach');
+      scrapeResult = await app.scrape(url, {
+        formats: ['screenshot'],
+        waitFor: 2000,
+        timeout: 30000,
+        onlyMainContent: false,
+        includeTags: ['body'],
+        excludeTags: ['script', 'iframe', 'embed', 'object'],
+        actions: [{ type: 'wait', milliseconds: 1000 }],
+        blockAds: true,
+      });
+    } catch (error: any) {
+      console.log('[scrape-screenshot] Fast approach failed:', error.message);
+      lastError = error;
+    }
+
+    // Attempt 2: Balanced approach if first failed
+    if (!scrapeResult) {
+      try {
+        console.log('[scrape-screenshot] Attempt 2: Balanced approach');
+        scrapeResult = await app.scrape(url, {
+          formats: ['screenshot'],
+          waitFor: 3000,
+          timeout: 45000,
+          onlyMainContent: false,
+          includeTags: ['body'],
+          excludeTags: ['script', 'iframe', 'embed', 'object'],
+          actions: [{ type: 'wait', milliseconds: 2000 }],
+          blockAds: true,
+        });
+      } catch (error: any) {
+        console.log('[scrape-screenshot] Balanced approach failed:', error.message);
+        lastError = error;
+      }
+    }
+
+    // Attempt 3: Minimal approach if still failed
+    if (!scrapeResult) {
+      try {
+        console.log('[scrape-screenshot] Attempt 3: Minimal approach');
+        scrapeResult = await app.scrape(url, {
+          formats: ['screenshot'],
+          waitFor: 1000,
+          timeout: 20000,
+          onlyMainContent: true, // Only main content
+          includeTags: ['body'],
+          excludeTags: ['script', 'style', 'iframe', 'embed', 'object'],
+          actions: [], // No additional waits
+          blockAds: true,
+        });
+      } catch (error: any) {
+        console.log('[scrape-screenshot] Minimal approach failed:', error.message);
+        lastError = error;
+      }
+    }
 
     console.log('[scrape-screenshot] Full scrape result:', JSON.stringify(scrapeResult, null, 2));
     console.log('[scrape-screenshot] Scrape result type:', typeof scrapeResult);
-    console.log('[scrape-screenshot] Scrape result keys:', Object.keys(scrapeResult));
+    console.log('[scrape-screenshot] Scrape result keys:', scrapeResult ? Object.keys(scrapeResult) : 'null');
     
     // The Firecrawl v4 API might return data directly without a success flag
     // Check if we have data with screenshot
@@ -72,10 +119,34 @@ export async function POST(req: NextRequest) {
     console.error('[scrape-screenshot] Screenshot capture error:', error);
     console.error('[scrape-screenshot] Error stack:', error.stack);
     
-    // Provide fallback response for development - removed NODE_ENV check as it doesn't work in Next.js production builds
+    // Check for specific timeout errors
+    if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT') {
+      console.log('[scrape-screenshot] Timeout detected - providing fallback response');
+      return NextResponse.json({ 
+        success: false,
+        error: 'Screenshot capture timed out. The website may be slow or have heavy content. You can proceed without the screenshot.',
+        screenshot: null,
+        fallback: true
+      }, { status: 200 }); // Return 200 so the frontend can handle the fallback
+    }
     
+    // Check for Firecrawl API errors
+    if (error.message?.includes('Firecrawl API error')) {
+      console.log('[scrape-screenshot] Firecrawl API error - providing fallback response');
+      return NextResponse.json({ 
+        success: false,
+        error: 'Screenshot service temporarily unavailable. You can proceed without the screenshot.',
+        screenshot: null,
+        fallback: true
+      }, { status: 200 }); // Return 200 so the frontend can handle the fallback
+    }
+    
+    // Generic error with fallback option
     return NextResponse.json({ 
-      error: error.message || 'Failed to capture screenshot'
-    }, { status: 500 });
+      success: false,
+      error: error.message || 'Failed to capture screenshot',
+      screenshot: null,
+      fallback: true
+    }, { status: 200 }); // Return 200 so the frontend can handle the fallback
   }
 }

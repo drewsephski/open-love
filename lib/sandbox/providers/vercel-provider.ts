@@ -143,6 +143,13 @@ export class VercelProvider extends SandboxProvider {
       
       this.existingFiles.add(path);
     } catch (writeError: any) {
+      // Check for sandbox timeout/stopped errors
+      if (writeError?.response?.status === 410 || 
+          writeError?.response?.data?.error?.code === 'sandbox_stopped') {
+        console.error('[VercelProvider] Sandbox has stopped execution - this usually means it timed out');
+        throw new Error('SANDBOX_TIMEOUT: The sandbox has expired due to time limits. Please start a new generation.');
+      }
+      
       // Log detailed error information
       console.error(`[VercelProvider] writeFiles failed for ${fullPath}:`, {
         error: writeError,
@@ -443,11 +450,37 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     // Create src/App.jsx
     const appJsx = `function App() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-900 flex items-center justify-center p-4">
       <div className="text-center max-w-2xl">
-        <p className="text-lg text-gray-400">
-          Vercel Sandbox Ready<br/>
-          Start building your React app with Vite and Tailwind CSS!
+        <div className="mb-8">
+          <div className="w-20 h-20 bg-indigo-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Open Lovable Sandbox</h1>
+          <p className="text-lg text-gray-600 mb-4">
+            Ready for AI-powered code generation
+          </p>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-3 text-gray-800">Getting Started</h2>
+          <div className="text-left space-y-2 text-gray-600">
+            <p>✨ AI is generating your application...</p>
+            <p>🔄 This page will update automatically</p>
+            <p>📱 Your responsive app will appear here</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-center space-x-2">
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+        </div>
+        
+        <p className="text-sm text-gray-500 mt-6">
+          Powered by Vite + React + Tailwind CSS
         </p>
       </div>
     </div>

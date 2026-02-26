@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { appConfig } from '@/config/app.config';
+import { appConfig } from '../../config/app.config';
 import HeroInput from '@/components/HeroInput';
 import SidebarInput from '@/components/app/generation/SidebarInput';
 import HeaderBrandKit from '@/components/shared/header/BrandKit/BrandKit';
@@ -115,6 +115,8 @@ function AISandboxPage() {
   const [sandboxFiles, setSandboxFiles] = useState<Record<string, string>>({});
   const [hasInitialSubmission, setHasInitialSubmission] = useState<boolean>(false);
   const [fileStructure, setFileStructure] = useState<string>('');
+  const [sandboxCreatedAt, setSandboxCreatedAt] = useState<Date | null>(null);
+  const [timeoutWarningShown, setTimeoutWarningShown] = useState<boolean>(false);
   
   const [conversationContext, setConversationContext] = useState<{
     scrapedWebsites: Array<{ url: string; content: any; timestamp: Date }>;
@@ -588,6 +590,19 @@ function AISandboxPage() {
         // Fetch sandbox files after creation
         setTimeout(fetchSandboxFiles, 1000);
         
+        // Track sandbox creation time for timeout warnings
+        setSandboxCreatedAt(new Date());
+        setTimeoutWarningShown(false);
+        
+        // Set up timeout warning (5 minutes before expiry)
+        const warningTime = (appConfig.vercelSandbox.timeoutMinutes - 5) * 60 * 1000;
+        setTimeout(() => {
+          if (!timeoutWarningShown) {
+            addChatMessage('⏰ Your sandbox will expire in 5 minutes. Consider finishing your current generation soon.', 'system');
+            setTimeoutWarningShown(true);
+          }
+        }, warningTime);
+        
         // For Vercel sandboxes, Vite is already started during setupViteApp
         // No need to restart it immediately after creation
         // Only restart if there's an actual issue later
@@ -993,61 +1008,112 @@ Tip: I automatically detect and install npm packages from your code imports (lik
               console.log('[applyGeneratedCode] Current iframe src:', iframeRef.current.src);
               console.log('[applyGeneratedCode] Sandbox URL:', currentSandboxData.url);
               
-              // Method 1: Try direct navigation first
+              // Method 1: Try direct navigation with enhanced error handling
               try {
-                const urlWithTimestamp = `${currentSandboxData.url}?t=${Date.now()}&force=true`;
+                const urlWithTimestamp = `${currentSandboxData.url}?t=${Date.now()}&force=true&v=${Math.random()}`;
                 console.log('[applyGeneratedCode] Attempting direct navigation to:', urlWithTimestamp);
                 
-                // Remove any existing onload handler
-                iframeRef.current.onload = null;
-                
-                // Navigate directly
-                iframeRef.current.src = urlWithTimestamp;
-                
-                // Wait a bit and check if it loaded
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // Try to access the iframe content to verify it loaded
-                try {
-                  const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
-                  if (iframeDoc && iframeDoc.readyState === 'complete') {
-                    console.log('[applyGeneratedCode] Iframe loaded successfully');
+                // Create a promise to track navigation success
+                const navigationPromise = new Promise<boolean>((resolve) => {
+                  if (!iframeRef.current) {
+                    resolve(false);
                     return;
                   }
-                } catch {
-                  console.log('[applyGeneratedCode] Cannot access iframe content (CORS), assuming loaded');
+                  
+                  const timeout = setTimeout(() => {
+                    console.log('[applyGeneratedCode] Navigation timeout - trying fallback');
+                    resolve(false);
+                  }, 5000);
+                  
+                  iframeRef.current.onload = () => {
+                    clearTimeout(timeout);
+                    console.log('[applyGeneratedCode] Navigation onload fired');
+                    // Give extra time for content to render
+                    setTimeout(() => resolve(true), 1000);
+                  };
+                  
+                  iframeRef.current.onerror = () => {
+                    clearTimeout(timeout);
+                    console.log('[applyGeneratedCode] Navigation onerror fired');
+                    resolve(false);
+                  };
+                  
+                  // Navigate directly
+                  iframeRef.current.src = urlWithTimestamp;
+                });
+                
+                const navigationSuccess = await navigationPromise;
+                
+                if (navigationSuccess) {
+                  console.log('[applyGeneratedCode] Direct navigation successful');
                   return;
                 }
               } catch (e) {
                 console.error('[applyGeneratedCode] Direct navigation failed:', e);
               }
               
-              // Method 2: Force complete iframe recreation if direct navigation failed
+              // Method 2: Enhanced iframe recreation with better error handling
               console.log('[applyGeneratedCode] Falling back to iframe recreation...');
               const parent = iframeRef.current.parentElement;
+              if (!parent) {
+                console.error('[applyGeneratedCode] No parent element for iframe recreation');
+                return;
+              }
+              
               const newIframe = document.createElement('iframe');
               
-              // Copy attributes
+              // Copy all attributes including style
               newIframe.className = iframeRef.current.className;
               newIframe.title = iframeRef.current.title;
               newIframe.allow = iframeRef.current.allow;
+              newIframe.style.cssText = iframeRef.current.style.cssText;
+              
               // Copy sandbox attributes
               const sandboxValue = iframeRef.current.getAttribute('sandbox');
               if (sandboxValue) {
                 newIframe.setAttribute('sandbox', sandboxValue);
               }
               
-              // Remove old iframe
-              iframeRef.current.remove();
+              // Set up recreation promise
+              const recreationPromise = new Promise<boolean>((resolve) => {
+                const timeout = setTimeout(() => {
+                  console.log('[applyGeneratedCode] Recreation timeout');
+                  resolve(false);
+                }, 8000);
+                
+                newIframe.onload = () => {
+                  clearTimeout(timeout);
+                  console.log('[applyGeneratedCode] Iframe recreation loaded');
+                  setTimeout(() => resolve(true), 1000);
+                };
+                
+                newIframe.onerror = () => {
+                  clearTimeout(timeout);
+                  console.log('[applyGeneratedCode] Iframe recreation error');
+                  resolve(false);
+                };
+              });
               
-              // Add new iframe
-              newIframe.src = `${currentSandboxData.url}?t=${Date.now()}&recreated=true`;
-              parent?.appendChild(newIframe);
+              // Remove old iframe and add new one
+              const oldIframe = iframeRef.current;
+              oldIframe.remove();
+              
+              // Add new iframe with unique URL to prevent caching
+              newIframe.src = `${currentSandboxData.url}?t=${Date.now()}&recreated=true&v=${Math.random()}`;
+              parent.appendChild(newIframe);
               
               // Update ref
               (iframeRef as any).current = newIframe;
               
-              console.log('[applyGeneratedCode] Iframe recreated with new content');
+              // Wait for recreation
+              const recreationSuccess = await recreationPromise;
+              
+              if (recreationSuccess) {
+                console.log('[applyGeneratedCode] Iframe recreation successful');
+              } else {
+                console.error('[applyGeneratedCode] All refresh methods failed');
+                addChatMessage('⚠️ Preview may not be showing the latest changes. Try the refresh button in the preview pane.', 'system');
+              }
             } else {
               console.error('[applyGeneratedCode] No iframe or sandbox URL available for refresh');
             }
@@ -1063,6 +1129,28 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       }
     } catch (error: any) {
       log(`Failed to apply code: ${error.message}`, 'error');
+      
+      // Check for sandbox timeout errors
+      if (error.message && error.message.includes('SANDBOX_TIMEOUT')) {
+        console.log('[applyGeneratedCode] Sandbox timeout detected, providing user-friendly recovery...');
+        addChatMessage('⏰ The sandbox has expired due to time limits. This can happen with complex generations.', 'system');
+        addChatMessage('🔄 Starting a new sandbox for you...', 'system');
+        
+        // Clear the old sandbox data
+        setSandboxData(null);
+        
+        // Create a new sandbox automatically
+        setTimeout(async () => {
+          try {
+            await createSandbox(true);
+            addChatMessage('✅ New sandbox ready! You can continue generating code.', 'system');
+          } catch (createError: any) {
+            addChatMessage(`Failed to create new sandbox: ${createError.message}`, 'error');
+          }
+        }, 1000);
+      } else {
+        addChatMessage(`❌ Failed to apply code: ${error.message}`, 'error');
+      }
     } finally {
       setLoading(false);
       // Clear isEdit flag after applying code
@@ -1074,9 +1162,13 @@ Tip: I automatically detect and install npm packages from your code imports (lik
   };
 
   const fetchSandboxFiles = async () => {
-    if (!sandboxData) return;
+    if (!sandboxData) {
+      console.log('[fetchSandboxFiles] No sandbox data available');
+      return;
+    }
     
     try {
+      console.log('[fetchSandboxFiles] Fetching updated file structure...');
       const response = await fetch('/api/get-sandbox-files', {
         method: 'GET',
         headers: {
@@ -1087,13 +1179,39 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setSandboxFiles(data.files || {});
-          setFileStructure(data.structure || '');
-          console.log('[fetchSandboxFiles] Updated file list:', Object.keys(data.files || {}).length, 'files');
+          const files = data.files || {};
+          const structure = data.structure || '';
+          
+          setSandboxFiles(files);
+          setFileStructure(structure);
+          
+          const fileCount = Object.keys(files).length;
+          console.log('[fetchSandboxFiles] Updated file list:', fileCount, 'files');
+          
+          // Show success message for significant updates
+          if (fileCount > 5) {
+            console.log('[fetchSandboxFiles] Sandbox populated with', fileCount, 'files');
+          }
+          
+          // Trigger a preview refresh if we have new files
+          if (fileCount > 0 && iframeRef.current && sandboxData?.url) {
+            setTimeout(() => {
+              if (iframeRef.current && sandboxData?.url) {
+                console.log('[fetchSandboxFiles] Triggering preview refresh after file update...');
+                const refreshUrl = `${sandboxData.url}?t=${Date.now()}&filesUpdated=true`;
+                iframeRef.current.src = refreshUrl;
+              }
+            }, 1000);
+          }
+        } else {
+          console.warn('[fetchSandboxFiles] API returned success=false:', data.error);
         }
+      } else {
+        console.warn('[fetchSandboxFiles] API request failed:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('[fetchSandboxFiles] Error fetching files:', error);
+      // Don't show user error for file fetching failures - it's not critical
     }
   };
   
@@ -1679,17 +1797,53 @@ Tip: I automatically detect and install npm packages from your code imports (lik
               </div>
             )}
             
-            {/* Refresh button */}
+            {/* Enhanced refresh button */}
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (iframeRef.current && sandboxData?.url) {
                   console.log('[Manual Refresh] Forcing iframe reload...');
-                  const newSrc = `${sandboxData.url}?t=${Date.now()}&manual=true`;
-                  iframeRef.current.src = newSrc;
+                  
+                  // Show loading state
+                  const button = event.currentTarget as HTMLButtonElement;
+                  const originalContent = button.innerHTML;
+                  button.innerHTML = '<div class="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>';
+                  button.disabled = true;
+                  
+                  try {
+                    // Try multiple refresh methods
+                    const timestamp = Date.now();
+                    const refreshUrl = `${sandboxData.url}?t=${timestamp}&manual=true&v=${Math.random()}`;
+                    
+                    // Method 1: Direct navigation
+                    iframeRef.current.src = refreshUrl;
+                    
+                    // Method 2: Force reload after a delay
+                    setTimeout(() => {
+                      try {
+                        if (iframeRef.current?.contentWindow) {
+                          iframeRef.current.contentWindow.location.reload();
+                        }
+                      } catch (e) {
+                        console.log('[Manual Refresh] Could not force reload (CORS expected)');
+                      }
+                    }, 1000);
+                    
+                    // Method 3: Fetch updated files
+                    setTimeout(() => {
+                      fetchSandboxFiles();
+                    }, 2000);
+                    
+                  } finally {
+                    // Reset button after delay
+                    setTimeout(() => {
+                      button.innerHTML = originalContent;
+                      button.disabled = false;
+                    }, 3000);
+                  }
                 }
               }}
-              className="absolute bottom-4 right-4 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-lg shadow-lg transition-all duration-200 hover:scale-105"
-              title="Refresh sandbox"
+              className="absolute bottom-4 right-4 bg-white/90 hover:bg-white text-gray-700 p-2 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh sandbox preview"
             >
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1701,20 +1855,53 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       
       // Default state when no sandbox and no screenshot
       return (
-        <div className="flex items-center justify-center h-full bg-gray-50 text-gray-600 text-lg">
+        <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-600">
           {screenshotError ? (
-            <div className="text-center">
-              <p className="mb-2">Failed to capture screenshot</p>
-              <p className="text-sm text-gray-500">{screenshotError}</p>
+            <div className="text-center max-w-md">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Screenshot Failed</h3>
+              <p className="text-sm text-gray-600 mb-4">{screenshotError}</p>
+              <button 
+                onClick={() => setScreenshotError(null)}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm"
+              >
+                Try Again
+              </button>
             </div>
           ) : sandboxData ? (
-            <div className="text-gray-500">
-              <div className="w-16 h-16 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-sm">Loading preview...</p>
+            <div className="text-center">
+              <div className="relative">
+                <div className="w-16 h-16 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="absolute inset-0 w-16 h-16 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{animationDelay: '0.2s'}}></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Sandbox</h3>
+              <p className="text-sm text-gray-600 mb-4">Setting up your development environment...</p>
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+              </div>
             </div>
           ) : (
-            <div className="text-gray-500 text-center">
-              <p className="text-sm">Start chatting to create your first app</p>
+            <div className="text-center max-w-md">
+              <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Ready to Build</h3>
+              <p className="text-gray-600 mb-6">
+                Start chatting with AI to create your application. Your sandbox will be created automatically.
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>💬 Enter a description or paste a URL to get started</p>
+                <p>🚀 AI will generate and deploy code in real-time</p>
+                <p>🎯 Preview your application instantly</p>
+              </div>
             </div>
           )}
         </div>

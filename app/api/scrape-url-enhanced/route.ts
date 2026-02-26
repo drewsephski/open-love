@@ -17,8 +17,11 @@ function sanitizeQuotes(text: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  let url = '';
+  
   try {
-    const { url } = await request.json();
+    const body = await request.json();
+    url = body.url;
     
     if (!url) {
       return NextResponse.json({
@@ -34,7 +37,7 @@ export async function POST(request: NextRequest) {
       throw new Error('FIRECRAWL_API_KEY environment variable is not set');
     }
     
-    // Make request to Firecrawl API with maxAge for 500% faster scraping
+    // Make request to Firecrawl API with optimized settings for reliability
     const firecrawlResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -43,19 +46,17 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         url,
-        formats: ['markdown', 'html', 'screenshot'],
-        waitFor: 3000,
-        timeout: 30000,
+        formats: ['markdown'], // Focus on markdown only for speed
+        waitFor: 3000, // Reduced wait time
+        timeout: 45000, // 45 seconds for better balance
         blockAds: true,
-        maxAge: 3600000, // Use cached data if less than 1 hour old (500% faster!)
+        maxAge: 3600000, // Use cached data if less than 1 hour old
+        includeTags: ['body', 'h1', 'h2', 'h3', 'p', 'a'], // Essential content tags only
+        excludeTags: ['script', 'iframe', 'embed', 'object', 'style'], // Exclude heavy elements
         actions: [
           {
             type: 'wait',
-            milliseconds: 2000
-          },
-          {
-            type: 'screenshot',
-            fullPage: false // Just visible viewport for performance
+            milliseconds: 2000 // Reasonable wait
           }
         ]
       })
@@ -72,11 +73,8 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to scrape content');
     }
     
-    const { markdown, metadata, screenshot, actions } = data.data;
-    // html available but not used in current implementation
-    
-    // Get screenshot from either direct field or actions result
-    const screenshotUrl = screenshot || actions?.screenshots?.[0] || null;
+    const { markdown, metadata } = data.data;
+    // Screenshot is handled separately by the screenshot API
     
     // Sanitize the markdown content
     const sanitizedMarkdown = sanitizeQuotes(markdown || '');
@@ -99,29 +97,61 @@ ${sanitizedMarkdown}
       success: true,
       url,
       content: formattedContent,
-      screenshot: screenshotUrl,
+      screenshot: null, // Screenshot handled separately
       structured: {
         title: sanitizeQuotes(title),
         description: sanitizeQuotes(description),
         content: sanitizedMarkdown,
         url,
-        screenshot: screenshotUrl
+        screenshot: null
       },
       metadata: {
         scraper: 'firecrawl-enhanced',
         timestamp: new Date().toISOString(),
         contentLength: formattedContent.length,
-        cached: data.data.cached || false, // Indicates if data came from cache
+        cached: data.data.cached || false,
         ...metadata
       },
-      message: 'URL scraped successfully with Firecrawl (with caching for 500% faster performance)'
+      message: 'URL scraped successfully with Firecrawl (optimized for speed and reliability)'
     });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('[scrape-url-enhanced] Error:', error);
+    
+    // Check for timeout errors specifically
+    if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT') {
+      console.log('[scrape-url-enhanced] Timeout detected - providing fallback response');
+      return NextResponse.json({
+        success: false,
+        error: 'Website scraping timed out. The site may be slow or have heavy content. You can proceed by describing what you want to build.',
+        fallback: true,
+        url,
+        content: null,
+        screenshot: null
+      }, { status: 200 }); // Return 200 so frontend can handle fallback
+    }
+    
+    // Check for Firecrawl API errors
+    if (error.message?.includes('Firecrawl API error')) {
+      console.log('[scrape-url-enhanced] Firecrawl API error - providing fallback response');
+      return NextResponse.json({
+        success: false,
+        error: 'Scraping service temporarily unavailable. You can proceed by describing what you want to build.',
+        fallback: true,
+        url,
+        content: null,
+        screenshot: null
+      }, { status: 200 });
+    }
+    
+    // Generic error with fallback
     return NextResponse.json({
       success: false,
-      error: (error as Error).message
-    }, { status: 500 });
+      error: (error as Error).message || 'Failed to scrape URL',
+      fallback: true,
+      url,
+      content: null,
+      screenshot: null
+    }, { status: 200 });
   }
 }
