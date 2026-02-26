@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createGroq } from '@ai-sdk/groq';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -11,8 +11,8 @@ import { z } from 'zod';
 const isUsingAIGateway = !!process.env.AI_GATEWAY_API_KEY;
 const aiGatewayBaseURL = 'https://ai-gateway.vercel.sh/v1';
 
-const groq = createGroq({
-  apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.GROQ_API_KEY,
+const openrouter = createOpenRouter({
+  apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.OPENROUTER_API_KEY,
   baseURL: isUsingAIGateway ? aiGatewayBaseURL : undefined,
 });
 
@@ -109,15 +109,15 @@ export async function POST(request: NextRequest) {
       aiModel = anthropic(model.replace('anthropic/', ''));
     } else if (model.startsWith('openai/')) {
       if (model.includes('gpt-oss')) {
-        aiModel = groq(model);
+        aiModel = openrouter(model);
       } else {
         aiModel = openai(model.replace('openai/', ''));
       }
     } else if (model.startsWith('google/')) {
       aiModel = googleGenerativeAI(model.replace('google/', ''));
     } else {
-      // Default to groq if model format is unclear
-      aiModel = groq(model);
+      // Default to openrouter if model format is unclear
+      aiModel = openrouter(model);
     }
     
     console.log('[analyze-edit-intent] Using AI model:', model);
