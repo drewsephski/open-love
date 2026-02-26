@@ -28,6 +28,11 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "Open Love",
   description: "Re-imagine any website in seconds with AI-powered website builder.",
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
