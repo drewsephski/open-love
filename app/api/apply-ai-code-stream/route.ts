@@ -307,8 +307,8 @@ export async function POST(request: NextRequest) {
 
     // Try to get provider from sandbox manager first
     let provider = sandboxId ? sandboxManager.getProvider(sandboxId) : sandboxManager.getActiveProvider();
-
-    // Fall back to global state if not found in manager
+    let providerInstance = global.activeSandboxProvider || provider;
+    let sandboxRecreated = false;
     if (!provider) {
       provider = global.activeSandboxProvider;
     }
@@ -399,6 +399,56 @@ export async function POST(request: NextRequest) {
       const message = `data: ${JSON.stringify(data)}\n\n`;
       await writer.write(encoder.encode(message));
     };
+
+    // Check if sandbox has expired
+    try {
+      if (providerInstance) {
+        console.log('[apply-ai-code-stream] Testing sandbox connectivity...');
+        const testResult = await providerInstance.runCommand('echo "sandbox_test"');
+        if (testResult.exitCode !== 0) {
+          console.log('[apply-ai-code-stream] Sandbox appears to be expired, recreating...');
+          throw new Error('Sandbox expired');
+        }
+      }
+    } catch (error: any) {
+      if (error.message.includes('expired') || error.message.includes('timeout') || error.message.includes('410')) {
+        console.log('[apply-ai-code-stream] Sandbox expired, creating new sandbox...');
+        
+        // Clean up expired sandbox
+        await sandboxManager.terminateAll();
+        if (global.activeSandboxProvider) {
+          try {
+            await global.activeSandboxProvider.terminate();
+          } catch (e) {
+            console.log('[apply-ai-code-stream] Failed to terminate expired sandbox:', e);
+          }
+        }
+        
+        // Create new sandbox
+        const { SandboxFactory } = await import('@/lib/sandbox/factory');
+        providerInstance = SandboxFactory.create();
+        const sandboxInfo = await providerInstance.createSandbox();
+        await providerInstance.setupViteApp();
+        
+        // Register new sandbox
+        sandboxManager.registerSandbox(sandboxInfo.sandboxId, providerInstance);
+        global.activeSandboxProvider = providerInstance;
+        global.sandboxData = {
+          sandboxId: sandboxInfo.sandboxId,
+          url: sandboxInfo.url
+        };
+        
+        sandboxRecreated = true;
+        console.log('[apply-ai-code-stream] New sandbox created:', sandboxInfo.url);
+        
+        await sendProgress({
+          type: 'info',
+          message: 'Sandbox expired. Created new sandbox and applying code...'
+        });
+      } else {
+        throw error;
+      }
+    }
 
     // Start processing in background (pass provider and request to the async function)
     (async (providerInstance, req) => {
@@ -789,7 +839,9 @@ export async function POST(request: NextRequest) {
           results,
           explanation: parsed.explanation,
           structure: parsed.structure,
-          message: `Successfully applied ${results.filesCreated.length} files`
+          message: `Successfully applied ${results.filesCreated.length} files`,
+          sandboxRecreated,
+          newSandboxUrl: sandboxRecreated ? global.sandboxData?.url : undefined
         });
 
         // Track applied files in conversation state

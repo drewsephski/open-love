@@ -806,6 +806,27 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       
       // Process final data
       if (finalData && finalData.type === 'complete') {
+        // Handle sandbox recreation
+        if (finalData.sandboxRecreated && finalData.newSandboxUrl) {
+          log('Sandbox was expired, created new sandbox');
+          log(`New sandbox URL: ${finalData.newSandboxUrl}`);
+          
+          // Update sandbox data with new URL
+          setSandboxData({
+            sandboxId: global.sandboxData?.sandboxId || '',
+            url: finalData.newSandboxUrl,
+            provider: 'vercel'
+          });
+          
+          // Update global state
+          if (typeof window !== 'undefined') {
+            (window as any).sandboxData = {
+              sandboxId: global.sandboxData?.sandboxId || '',
+              url: finalData.newSandboxUrl
+            };
+          }
+        }
+        
         const data: any = {
           success: true,
           results: finalData.results,

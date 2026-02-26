@@ -24,7 +24,7 @@ export class VercelProvider extends SandboxProvider {
       // Create Vercel sandbox
       
       const sandboxConfig: any = {
-        timeout: 300000, // 5 minutes in ms
+        timeout: 600000, // 10 minutes in ms (increased from 5 minutes)
         runtime: 'node22', // Use node22 runtime for Vercel sandboxes
         ports: [5173] // Vite port
       };
