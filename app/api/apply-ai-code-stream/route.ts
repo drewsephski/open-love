@@ -294,6 +294,9 @@ export async function POST(request: NextRequest) {
       parsed.files.forEach(f => {
         console.log(`[apply-ai-code-stream] - ${f.path} (${f.content.length} chars)`);
       });
+    } else {
+      console.log('[apply-ai-code-stream] No files found in parsed response!');
+      console.log('[apply-ai-code-stream] Response preview (first 1000 chars):', response.substring(0, 1000));
     }
     console.log('[apply-ai-code-stream] Packages found:', parsed.packages);
 
@@ -530,8 +533,14 @@ export async function POST(request: NextRequest) {
         let filteredFiles = filesArray.filter(file => {
           if (!file || typeof file !== 'object') return false;
           const fileName = (file.path || '').split('/').pop() || '';
-          return !configFiles.includes(fileName);
+          const shouldKeep = !configFiles.includes(fileName);
+          if (!shouldKeep) {
+            console.log(`[apply-ai-code-stream] Filtering out config file: ${file.path}`);
+          }
+          return shouldKeep;
         });
+
+        console.log(`[apply-ai-code-stream] Files after filtering: ${filteredFiles.length} (from ${filesArray.length} total)`);
 
         // If Morph is enabled and we have edits, apply them before file writes
         const morphUpdatedPaths = new Set<string>();
@@ -588,8 +597,11 @@ export async function POST(request: NextRequest) {
           });
         }
         
+        console.log(`[apply-ai-code-stream] Starting file write loop with ${filteredFiles.length} files`);
+        
         for (const [index, file] of filteredFiles.entries()) {
           try {
+            console.log(`[apply-ai-code-stream] Processing file ${index + 1}/${filteredFiles.length}: ${file.path}`);
             // Send progress for each file
             await sendProgress({
               type: 'file-progress',
@@ -635,7 +647,9 @@ export async function POST(request: NextRequest) {
             }
 
             // Write the file using provider
+            console.log(`[apply-ai-code-stream] Writing file: ${normalizedPath} (${fileContent.length} chars)`);
             await providerInstance.writeFile(normalizedPath, fileContent);
+            console.log(`[apply-ai-code-stream] Successfully wrote file: ${normalizedPath}`);
 
             // Update file cache
             if (global.sandboxState?.fileCache) {
@@ -658,6 +672,7 @@ export async function POST(request: NextRequest) {
               action: isUpdate ? 'updated' : 'created'
             });
           } catch (error) {
+            console.error(`[apply-ai-code-stream] Failed to write file ${file.path}:`, error);
             if (results.errors) {
               results.errors.push(`Failed to create ${file.path}: ${(error as Error).message}`);
             }
@@ -737,6 +752,14 @@ export async function POST(request: NextRequest) {
         }
 
         // Send final results
+        console.log(`[apply-ai-code-stream] File creation summary:`);
+        console.log(`[apply-ai-code-stream] - Files created: ${results.filesCreated.length}`);
+        console.log(`[apply-ai-code-stream] - Files updated: ${results.filesUpdated.length}`);
+        console.log(`[apply-ai-code-stream] - Errors: ${results.errors.length}`);
+        if (results.errors.length > 0) {
+          console.log(`[apply-ai-code-stream] Errors:`, results.errors);
+        }
+        
         await sendProgress({
           type: 'complete',
           results,
