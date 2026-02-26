@@ -1814,21 +1814,6 @@ Tip: I automatically detect and install npm packages from your code imports (lik
                     const timestamp = Date.now();
                     const refreshUrl = `${sandboxData.url}?t=${timestamp}&manual=true&v=${Math.random()}`;
                     
-                    // Method 1: Direct navigation
-                    iframeRef.current.src = refreshUrl;
-                    
-                    // Method 2: Force reload after a delay
-                    setTimeout(() => {
-                      try {
-                        if (iframeRef.current?.contentWindow) {
-                          iframeRef.current.contentWindow.location.reload();
-                        }
-                      } catch (e) {
-                        console.log('[Manual Refresh] Could not force reload (CORS expected)');
-                      }
-                    }, 1000);
-                    
-                    // Method 3: Fetch updated files
                     setTimeout(() => {
                       fetchSandboxFiles();
                     }, 2000);

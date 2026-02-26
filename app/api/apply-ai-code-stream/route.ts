@@ -759,6 +759,30 @@ export async function POST(request: NextRequest) {
         if (results.errors.length > 0) {
           console.log(`[apply-ai-code-stream] Errors:`, results.errors);
         }
+
+        // Force Vite to detect changes by touching a key file
+        try {
+          if (providerInstance && (results.filesCreated.length > 0 || results.filesUpdated.length > 0)) {
+            console.log('[apply-ai-code-stream] Triggering Vite refresh by touching main.jsx...');
+            await providerInstance.runCommand('touch /vercel/sandbox/src/main.jsx');
+            
+            // Also try to restart Vite if needed
+            setTimeout(async () => {
+              try {
+                console.log('[apply-ai-code-stream] Checking if Vite is running...');
+                const viteCheck = await providerInstance.runCommand('pgrep -f "vite" || echo "Vite not running"');
+                if (viteCheck.stdout.includes('Vite not running')) {
+                  console.log('[apply-ai-code-stream] Restarting Vite...');
+                  await providerInstance.runCommand('cd /vercel/sandbox && nohup npm run dev > /tmp/vite.log 2>&1 &');
+                }
+              } catch (e) {
+                console.log('[apply-ai-code-stream] Vite check failed:', e);
+              }
+            }, 2000);
+          }
+        } catch (e) {
+          console.log('[apply-ai-code-stream] Failed to trigger Vite refresh:', e);
+        }
         
         await sendProgress({
           type: 'complete',
