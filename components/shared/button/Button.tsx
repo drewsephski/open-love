@@ -24,22 +24,22 @@ export default function Button({
       type={attrs.type ?? "button"}
       className={cn(
         attrs.className,
-        "[&>span]:px-6 flex items-center justify-center button relative [&>*]:relative",
+        "[&>span]:px-6 flex items-center justify-center button relative [&>*]:relative transition-all duration-300",
         "text-label-medium lg-max:[&_svg]:size-24",
         `button-${variant} group/button`,
         {
-          "rounded-8 p-6 transition-all duration-200": size === "default",
-          "rounded-10 p-8 gap-2 transition-all duration-200": size === "large",
+          "rounded-8 p-6 transform hover:scale-105 active:scale-[0.995]": size === "default",
+          "rounded-10 p-8 gap-2 transform hover:scale-[1.02] active:scale-[0.995]": size === "large",
 
-          "text-accent-white active:[scale:0.995]": variant === "primary",
+          "text-accent-white shadow-lg hover:shadow-xl": variant === "primary",
           "text-accent-black active:[scale:0.99] active:bg-black-alpha-7": [
             "secondary",
             "tertiary",
             "playground",
           ].includes(variant),
-          "bg-black-alpha-4 hover:bg-black-alpha-6": variant === "secondary",
-          "hover:bg-black-alpha-4": variant === "tertiary",
-          "opacity-70 cursor-not-allowed pointer-events-none": disabled || loading,
+          "bg-black-alpha-4 hover:bg-black-alpha-6 hover:shadow-md": variant === "secondary",
+          "hover:bg-black-alpha-4 hover:shadow-sm": variant === "tertiary",
+          "opacity-70 cursor-not-allowed pointer-events-none transform-none": disabled || loading,
         },
         variant === "playground" && [
           "inside-border before:border-black-alpha-4",
@@ -51,7 +51,7 @@ export default function Button({
       disabled={disabled || loading}
     >
       {variant === "primary" && (
-        <div className="overlay button-background !absolute" />
+        <div className="overlay button-background !absolute animate-glow-pulse" />
       )}
       
       {loading ? (

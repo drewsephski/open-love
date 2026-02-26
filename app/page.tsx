@@ -242,17 +242,24 @@ export default function HomePage() {
         </div>
 
         {/* Hero Section */}
-        <section className="overflow-x-clip" id="home-hero">
+        <section className="overflow-x-clip relative" id="home-hero">
+          {/* Subtle animated background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-heat-4 via-transparent to-heat-8 opacity-30 animate-pulse-subtle" />
+          
           <div className="pt-28 lg:pt-254 lg:-mt-100 pb-115 relative" id="hero-content">
             <HomeHeroPixi />
             <HeroFlame />
             <BackgroundOuterPiece />
             <HomeHeroBackground />
 
-            <div className="relative container px-16">
-              <HomeHeroBadge />
-              <HomeHeroTitle />
-              <p className="text-center text-body-large">
+            <div className="relative container px-16 lg:px-8">
+              <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                <HomeHeroBadge />
+              </div>
+              <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                <HomeHeroTitle />
+              </div>
+              <p className="text-center text-body-large animate-fade-in-up text-accent-black/80 px-4 lg:px-0" style={{ animationDelay: '300ms' }}>
                 Clone brand format or re-imagine any website, in seconds.
               </p>
             </div>
@@ -268,17 +275,17 @@ export default function HomePage() {
             <Connector className="-bottom-10 -right-[10.5px] lg:hidden" />
 
             {/* Hero Input Component */}
-            <div className="max-w-552 mx-auto z-[11] lg:z-[2]">
+            <div className="max-w-552 mx-auto z-[11] lg:z-[2] px-4 lg:px-0">
               <div className="rounded-20 -mt-30 lg:-mt-30">
                 <div
-                  className="bg-white rounded-20 relative z-10"
+                  className="bg-white rounded-20 relative z-10 transition-all duration-300 hover:shadow-2xl"
                   style={{
                     boxShadow:
                       "0px 0px 44px 0px rgba(0, 0, 0, 0.02), 0px 88px 56px -20px rgba(0, 0, 0, 0.03), 0px 56px 56px -20px rgba(0, 0, 0, 0.02), 0px 32px 32px -20px rgba(0, 0, 0, 0.03), 0px 16px 24px -12px rgba(0, 0, 0, 0.03), 0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 0px 0px 10px #F9F9F9",
                   }}
                 >
 
-                <div className="p-[28px] flex gap-12 items-center w-full relative bg-white rounded-20">
+                <div className="p-[20px] lg:p-[28px] flex gap-12 items-center w-full relative bg-white rounded-20">
                   {/* Show different UI when search results are displayed */}
                   {hasSearched && searchResults.length > 0 && !isFadingOut ? (
                     <>
@@ -315,7 +322,11 @@ export default function HomePage() {
                             setUrl('');
                           }, 500);
                         }}
-                        className="button relative rounded-10 px-12 py-8 text-label-medium font-medium flex items-center justify-center gap-6 bg-gray-100 hover:bg-gray-200 text-gray-700 active:scale-[0.995] transition-all"
+                        className={`button relative rounded-10 px-12 py-8 text-label-medium font-medium flex items-center justify-center gap-6 transition-all duration-300 transform hover:scale-105 active:scale-[0.995] ${
+                          isSearching 
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-lg'
+                        }`}
                       >
                         <svg 
                           width="16" 
@@ -323,11 +334,13 @@ export default function HomePage() {
                           viewBox="0 0 16 16" 
                           fill="none" 
                           xmlns="http://www.w3.org/2000/svg"
-                          className="opacity-60"
+                          className={`opacity-60 transition-transform duration-300 ${
+                            isSearching ? 'animate-spin' : ''
+                          }`}
                         >
                           <path d="M14 14L10 10M11 6.5C11 9 9 11 6.5 11C4 11 2 9 2 6.5C2 4 4 2 6.5 2C9 2 11 4 11 6.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                         </svg>
-                        <span>Search Again</span>
+                        <span>{isSearching ? 'Searching...' : 'Search Again'}</span>
                       </button>
                     </>
                   ) : (
@@ -360,7 +373,7 @@ export default function HomePage() {
                         </svg>
                       )}
                       <input
-                        className="flex-1 bg-transparent text-body-input text-accent-black placeholder:text-black-alpha-48 focus:outline-none focus:ring-0 focus:border-transparent"
+                        className="flex-1 bg-transparent text-body-input text-accent-black placeholder:text-black-alpha-48 focus:outline-none focus:ring-0 focus:border-transparent transition-all duration-200"
                         placeholder="Enter URL or search term..."
                         type="text"
                         value={url}
@@ -464,7 +477,7 @@ export default function HomePage() {
                             value={additionalInstructions}
                             onChange={(e) => setAdditionalInstructions(e.target.value)}
                             placeholder="Describe the new functionality you want to build using this brand's styles..."
-                            className="w-full px-4 py-10 text-xs font-medium text-gray-700 bg-gray-50 rounded border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 placeholder:text-gray-400 min-h-[80px] resize-none"
+                            className="w-full px-4 py-10 text-xs font-medium text-gray-700 bg-gray-50 rounded border border-gray-200 focus:border-heat-40 focus:outline-none focus:ring-2 focus:ring-heat-20 placeholder:text-gray-400 min-h-[80px] resize-none transition-all duration-300 hover:bg-gray-100"
                           />
                         </div>
                       )}
@@ -481,8 +494,8 @@ export default function HomePage() {
                                 onClick={() => setSelectedStyle(style.id)}
                                 className={`
                                   ${selectedStyle === style.id
-                                    ? 'bg-heat-100 hover:bg-heat-200 flex items-center justify-center button relative text-label-medium button-primary group/button rounded-10 p-8 text-accent-white active:scale-[0.995] border-0'
-                                    : 'border-gray-200 hover:border-gray-300 bg-white text-gray-700 py-3.5 px-4 rounded text-xs font-medium border text-center'
+                                    ? 'bg-heat-100 hover:bg-heat-200 flex items-center justify-center button relative text-label-medium button-primary group/button rounded-10 p-8 text-accent-white active:scale-[0.995] border-0 shadow-lg transform transition-all duration-300 hover:scale-105'
+                                    : 'border-gray-200 hover:border-heat-40 hover:bg-heat-4 hover:text-heat-90 bg-white text-gray-700 py-3.5 px-4 rounded text-xs font-medium border text-center transition-all duration-300 transform hover:scale-105'
                                   }
                                   transition-all
                                   ${isValidUrl ? 'opacity-100' : 'opacity-0'}
@@ -512,7 +525,7 @@ export default function HomePage() {
                         <select
                           value={selectedModel}
                           onChange={(e) => setSelectedModel(e.target.value)}
-                          className={`px-3 py-2.5 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 ${extendBrandStyles ? 'flex-1' : ''}`}
+                          className={`px-3 py-2.5 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-heat-40 focus:outline-none focus:ring-2 focus:ring-heat-20 transition-all duration-300 hover:border-heat-20 text-sm lg:text-xs ${extendBrandStyles ? 'flex-1' : ''}`}
                         >
                           {models.map((model) => (
                             <option key={model.id} value={model.id}>
@@ -525,7 +538,7 @@ export default function HomePage() {
                         {!extendBrandStyles && (
                           <input
                             type="text"
-                            className="flex-1 px-3 py-2.5 text-xs font-medium text-gray-700 bg-gray-50 rounded border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 placeholder:text-gray-400"
+                            className="flex-1 px-3 py-2.5 text-xs lg:text-xs font-medium text-gray-700 bg-gray-50 rounded border border-gray-200 focus:border-heat-40 focus:outline-none focus:ring-2 focus:ring-heat-20 placeholder:text-gray-400 transition-all duration-300 hover:bg-gray-100"
                             placeholder="Additional instructions (optional)"
                             onChange={(e) => sessionStorage.setItem('additionalInstructions', e.target.value)}
                           />
@@ -547,10 +560,10 @@ export default function HomePage() {
 
         {/* Full-width oval carousel section */}
         {showSearchTiles && hasSearched && (
-          <section className={`carousel-section relative w-full overflow-hidden mt-32 mb-32 transition-opacity duration-500 ${
-            isFadingOut ? 'opacity-0' : 'opacity-100'
+          <section className={`carousel-section relative w-full overflow-hidden mt-32 mb-32 transition-all duration-700 ${
+            isFadingOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
           }`}>
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-50/50 to-white rounded-[50%] transform scale-x-150 -translate-y-24" />
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-50/60 via-white/40 to-white/80 rounded-[50%] transform scale-x-150 -translate-y-24 backdrop-blur-sm" />
             
             {isSearching ? (
               // Loading state with animated scrolling skeletons
@@ -602,7 +615,7 @@ export default function HomePage() {
                   {[...searchResults, ...searchResults].map((result, index) => (
                     <div
                       key={`${result.url}-${index}`}
-                      className="group flex-shrink-0 w-[400px] h-[240px] rounded-lg overflow-hidden border-2 border-gray-200/50 transition-all duration-300 hover:shadow-2xl bg-white relative"
+                      className="group flex-shrink-0 w-[400px] h-[240px] rounded-lg overflow-hidden border-2 border-gray-200/50 transition-all duration-500 hover:shadow-2xl hover:scale-105 hover:border-heat-40 bg-white relative"
                       onMouseLeave={() => {
                         if (showInstructionsForIndex === index) {
                           setShowInstructionsForIndex(null);
@@ -611,11 +624,11 @@ export default function HomePage() {
                       }}
                     >
                       {/* Hover overlay with clone buttons or instructions input */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 flex flex-col items-center justify-center p-6">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 z-10 flex flex-col items-center justify-center p-6">
                         {showInstructionsForIndex === index ? (
                           /* Instructions input view - matching main input style exactly */
                           <div className="w-full max-w-[380px]">
-                            <div className="bg-white rounded-20" style={{
+                            <div className="bg-white rounded-20 transform transition-all duration-300 scale-100 hover:scale-105" style={{
                               boxShadow: "0px 0px 44px 0px rgba(0, 0, 0, 0.02), 0px 88px 56px -20px rgba(0, 0, 0, 0.03), 0px 56px 56px -20px rgba(0, 0, 0, 0.02), 0px 32px 32px -20px rgba(0, 0, 0, 0.03), 0px 16px 24px -12px rgba(0, 0, 0, 0.03), 0px 0px 0px 1px rgba(0, 0, 0, 0.05)"
                             }}>
                               {/* Input area matching main search */}
