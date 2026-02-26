@@ -3,6 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { appConfig } from "@/config/app.config";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
 
 interface SidebarInputProps {
   onSubmit: (url: string, style: string, model: string, instructions?: string) => void;
@@ -93,18 +100,22 @@ export default function SidebarInput({ onSubmit, disabled = false }: SidebarInpu
             {/* Model Selector */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">AI Model</label>
-              <select
+              <Select
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                onValueChange={setSelectedModel}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
               >
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full px-3 py-2 text-xs font-medium text-gray-700 bg-white rounded border border-gray-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Additional Instructions */}

@@ -3,7 +3,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateObject } from 'ai';
+import { generateObject, LanguageModel } from 'ai';
 import { z } from 'zod';
 // import type { FileManifest } from '@/types/file-manifest'; // Type is used implicitly through manifest parameter
 
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     
     // Use AI to create a search plan
     const result = await generateObject({
-      model: aiModel,
+      model: aiModel as LanguageModel,
       schema: searchPlanSchema,
       messages: [
         {

@@ -25,6 +25,13 @@ import {
 } from '@/lib/icons';
 import { motion } from 'framer-motion';
 import CodeApplicationProgress, { type CodeApplicationState } from '@/components/CodeApplicationProgress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
 
 interface SandboxData {
   sandboxId: string;
@@ -2886,7 +2893,7 @@ IMPORTANT: The content above in the <branding-format> tags contains the extracte
 Use these guidelines (colors, fonts, spacing, design patterns) to build what the user requested.
 
 CRITICAL REQUIREMENTS:
-- DO NOT recreate the original website at ${url}
+- DO recreate the original website at ${url}
 - DO create a COMPLETELY NEW component that fulfills the user's request
 - The user wants: "${brandExtensionPrompt}"
 - Build ONLY what the user requested - nothing more
@@ -3285,10 +3292,9 @@ Focus on the key sections and content, making it clean and modern.`;
         <HeaderBrandKit />
         <div className="flex items-center gap-2">
           {/* Model Selector - Left side */}
-          <select
+          <Select
             value={aiModel}
-            onChange={(e) => {
-              const newModel = e.target.value;
+            onValueChange={(newModel) => {
               setAiModel(newModel);
               const params = new URLSearchParams(searchParams);
               params.set('model', newModel);
@@ -3297,14 +3303,18 @@ Focus on the key sections and content, making it clean and modern.`;
               }
               router.push(`/generation?${params.toString()}`);
             }}
-            className="px-3 py-1.5 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-300 transition-colors"
           >
-            {appConfig.ai.availableModels.map(model => (
-              <option key={model} value={model}>
-                {appConfig.ai.modelDisplayNames?.[model] || model}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="px-5 py-3.5 text-sm text-gray-900 bg-gray-50 border border-gray-600 rounded-lg focus:outline-none focus:border-gray-300 transition-colors">
+              <SelectValue placeholder="Select model" />
+            </SelectTrigger>
+            <SelectContent>
+              {appConfig.ai.availableModels.map(model => (
+                <SelectItem key={model} value={model}>
+                  {appConfig.ai.modelDisplayNames?.[model] || model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <button 
             onClick={() => createSandbox()}
             className="p-8 rounded-lg transition-colors bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100"
