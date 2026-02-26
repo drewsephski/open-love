@@ -1,16 +1,16 @@
 import { appConfig } from '@/config/app.config';
-import { createGroq } from '@ai-sdk/groq';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
-type ProviderName = 'openai' | 'anthropic' | 'groq' | 'google';
+type ProviderName = 'openai' | 'anthropic' | 'openrouter' | 'google';
 
 // Client function type returned by @ai-sdk providers
 export type ProviderClient =
   | ReturnType<typeof createOpenAI>
   | ReturnType<typeof createAnthropic>
-  | ReturnType<typeof createGroq>
+  | ReturnType<typeof createOpenRouter>
   | ReturnType<typeof createGoogleGenerativeAI>;
 
 export interface ProviderResolution {
@@ -36,8 +36,8 @@ function getEnvDefaults(provider: ProviderName): { apiKey?: string; baseURL?: st
     case 'anthropic':
       // Default Anthropic base URL mirrors existing routes
       return { apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com/v1' };
-    case 'groq':
-      return { apiKey: process.env.GROQ_API_KEY, baseURL: process.env.GROQ_BASE_URL };
+    case 'openrouter':
+      return { apiKey: process.env.OPENROUTER_API_KEY, baseURL: process.env.OPENROUTER_BASE_URL };
     case 'google':
       return { apiKey: process.env.GEMINI_API_KEY, baseURL: process.env.GEMINI_BASE_URL };
     default:
@@ -62,14 +62,14 @@ function getOrCreateClient(provider: ProviderName, apiKey?: string, baseURL?: st
     case 'anthropic':
       client = createAnthropic({ apiKey: effective.apiKey || getEnvDefaults('anthropic').apiKey, baseURL: effective.baseURL ?? getEnvDefaults('anthropic').baseURL });
       break;
-    case 'groq':
-      client = createGroq({ apiKey: effective.apiKey || getEnvDefaults('groq').apiKey, baseURL: effective.baseURL ?? getEnvDefaults('groq').baseURL });
+    case 'openrouter':
+      client = createOpenRouter({ apiKey: effective.apiKey || getEnvDefaults('openrouter').apiKey, baseURL: effective.baseURL ?? getEnvDefaults('openrouter').baseURL });
       break;
     case 'google':
       client = createGoogleGenerativeAI({ apiKey: effective.apiKey || getEnvDefaults('google').apiKey, baseURL: effective.baseURL ?? getEnvDefaults('google').baseURL });
       break;
     default:
-      client = createGroq({ apiKey: effective.apiKey || getEnvDefaults('groq').apiKey, baseURL: effective.baseURL ?? getEnvDefaults('groq').baseURL });
+      client = createOpenRouter({ apiKey: effective.apiKey || getEnvDefaults('openrouter').apiKey, baseURL: effective.baseURL ?? getEnvDefaults('openrouter').baseURL });
   }
 
   clientCache.set(cacheKey, client);
@@ -92,7 +92,7 @@ export function getProviderForModel(modelId: string): ProviderResolution {
   const isKimiGroq = modelId === 'moonshotai/kimi-k2-instruct-0905';
 
   if (isKimiGroq) {
-    const client = getOrCreateClient('groq');
+    const client = getOrCreateClient('openrouter');
     return { client, actualModel: 'moonshotai/kimi-k2-instruct-0905' };
   }
 
@@ -111,8 +111,8 @@ export function getProviderForModel(modelId: string): ProviderResolution {
     return { client, actualModel: modelId.replace('google/', '') };
   }
 
-  // Default: use Groq with modelId as-is
-  const client = getOrCreateClient('groq');
+  // Default: use OpenRouter with modelId as-is
+  const client = getOrCreateClient('openrouter');
   return { client, actualModel: modelId };
 }
 

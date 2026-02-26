@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createGroq } from '@ai-sdk/groq';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -20,12 +20,12 @@ const aiGatewayBaseURL = 'https://ai-gateway.vercel.sh/v1';
 
 console.log('[generate-ai-code-stream] AI Gateway config:', {
   isUsingAIGateway,
-  hasGroqKey: !!process.env.GROQ_API_KEY,
-  hasAIGatewayKey: !!process.env.AI_GATEWAY_API_KEY
+  hasOpenRouterKey: !!process.env.OPENROUTER_API_KEY,
+  hasAIGatewayKey: !!process.env.AI_GATEWAY_API_KEY 
 });
 
-const groq = createGroq({
-  apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.GROQ_API_KEY,
+const openrouter = createOpenRouter({
+  apiKey: process.env.AI_GATEWAY_API_KEY ?? process.env.OPENROUTER_API_KEY,
   baseURL: isUsingAIGateway ? aiGatewayBaseURL : undefined,
 });
 
@@ -1220,7 +1220,7 @@ MORPH FAST APPLY MODE (EDIT-ONLY):
         const modelProvider = isAnthropic ? anthropic : 
                               (isOpenAI ? openai : 
                               (isGoogle ? googleGenerativeAI : 
-                              (isKimiGroq ? groq : groq)));
+                              (isKimiGroq ? openrouter : openrouter)));
         
         // Fix model name transformation for different providers
         let actualModel: string;
@@ -1732,9 +1732,9 @@ Provide the complete file content without any truncation. Include all necessary 
                 } else if (model.includes('claude')) {
                   completionClient = anthropic;
                 } else if (model === 'moonshotai/kimi-k2-instruct-0905') {
-                  completionClient = groq;
+                  completionClient = openrouter;
                 } else {
-                  completionClient = groq;
+                  completionClient = openrouter;
                 }
                 
                 // Determine the correct model name for the completion
