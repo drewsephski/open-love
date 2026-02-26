@@ -255,13 +255,6 @@ export default function HomePage() {
               <p className="text-center text-body-large">
                 Clone brand format or re-imagine any website, in seconds.
               </p>
-              <Link
-                className="bg-black-alpha-4 hover:bg-black-alpha-6 rounded-6 px-8 lg:px-6 text-label-large h-30 lg:h-24 block mt-8 mx-auto w-max gap-4 transition-all"
-                href="#"
-                onClick={(e) => e.preventDefault()}
-              >
-                Powered by Firecrawl.
-              </Link>
             </div>
           </div>
 

@@ -33,13 +33,6 @@ export default function HomeHero() {
             Power your AI apps with clean data crawled
             <br className="lg-max:hidden" />
             from any website.
-            <Link
-              className="bg-black-alpha-4 hover:bg-black-alpha-6 lg:ml-4 rounded-6 px-8 lg:px-6 text-label-large lg-max:py-2 h-30 lg:h-24 block lg-max:mt-8 lg-max:mx-auto lg-max:w-max lg:inline-block gap-4 transition-all"
-              href="https://github.com/firecrawl/firecrawl"
-              target="_blank"
-            >
-              It&apos;s also open source.
-            </Link>
           </p>
         </div>
       </div>

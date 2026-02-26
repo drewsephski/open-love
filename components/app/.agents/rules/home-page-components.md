@@ -3,6 +3,7 @@
 When working with home/landing page components in components-new/app/(home):
 
 ## Structure
+
 ```
 home/
 ├── sections/         # Major page sections
@@ -16,16 +17,19 @@ home/
 ```
 
 ## Migration Notes
+
 These components will be migrated from `marketing/` when beginning home page migration after Dashboard v2.
 
-### Priority Sections to Migrate:
+### Priority Sections to Migrate
+
 1. **Hero** - Main landing with HeroFlame effect
 2. **Features** - Feature grid with animations
 3. **Testimonials** - Social proof section
 4. **Pricing** - Pricing tiers with heat buttons
 5. **FAQ** - Collapsible FAQ items
 
-### Usage Pattern:
+### Usage Pattern
+
 ```tsx
 // app/page.tsx (future)
 import { Hero } from '@/components/home/sections/hero';
@@ -48,6 +52,7 @@ export default function HomePage() {
 ```
 
 ## Design Principles
+
 - **Fire theme**: Subtle flame effects in hero
 - **Performance**: Lazy load below-fold sections
 - **Responsive**: Mobile-first approach

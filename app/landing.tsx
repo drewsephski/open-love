@@ -43,6 +43,7 @@ export default function LandingPage() {
               <div className="flex gap-24 items-center">
                 <Link href="/" className="flex items-center gap-2">
                   <FirecrawlIcon className="w-7 h-7 text-accent-black" />
+                  <FirecrawlLogo />
                 </Link>
               </div>
 
