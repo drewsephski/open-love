@@ -1799,7 +1799,7 @@ Tip: I automatically detect and install npm packages from your code imports (lik
             
             {/* Enhanced refresh button */}
             <button
-              onClick={async () => {
+              onClick={async (event) => {
                 if (iframeRef.current && sandboxData?.url) {
                   console.log('[Manual Refresh] Forcing iframe reload...');
                   
