@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { parseJavaScriptFile, buildComponentTree } from '@/lib/file-parser';
 import { FileManifest, FileInfo, RouteInfo } from '@/types/file-manifest';
-// SandboxState type used implicitly through global.activeSandbox
+import { sandboxManager } from '@/lib/sandbox/sandbox-manager';
 
 declare global {
   var activeSandbox: any;
@@ -9,7 +9,10 @@ declare global {
 
 export async function GET() {
   try {
-    if (!global.activeSandbox) {
+    // Get the active sandbox provider
+    const provider = sandboxManager.getActiveProvider() || global.activeSandbox;
+    
+    if (!provider) {
       return NextResponse.json({
         success: false,
         error: 'No active sandbox'
@@ -19,7 +22,7 @@ export async function GET() {
     console.log('[get-sandbox-files] Fetching and analyzing file structure...');
     
     // Get list of all relevant files
-    const findResult = await global.activeSandbox.runCommand({
+    const findResult = await provider.runCommand({
       cmd: 'find',
       args: [
         '.',
@@ -53,7 +56,7 @@ export async function GET() {
     for (const filePath of fileList) {
       try {
         // Check file size first
-        const statResult = await global.activeSandbox.runCommand({
+        const statResult = await provider.runCommand({
           cmd: 'stat',
           args: ['-f', '%z', filePath]
         });
@@ -63,7 +66,7 @@ export async function GET() {
           
           // Only read files smaller than 10KB
           if (fileSize < 10000) {
-            const catResult = await global.activeSandbox.runCommand({
+            const catResult = await provider.runCommand({
               cmd: 'cat',
               args: [filePath]
             });
@@ -84,7 +87,7 @@ export async function GET() {
     }
     
     // Get directory structure
-    const treeResult = await global.activeSandbox.runCommand({
+    const treeResult = await provider.runCommand({
       cmd: 'find',
       args: ['.', '-type', 'd', '-not', '-path', '*/node_modules*', '-not', '-path', '*/.git*']
     });

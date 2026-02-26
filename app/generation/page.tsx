@@ -650,6 +650,30 @@ Tip: I automatically detect and install npm packages from your code imports (lik
     setLoading(true);
     log('Applying AI-generated code...');
     
+    // Ensure we have sandbox data
+    const effectiveSandboxData = overrideSandboxData || sandboxData;
+    if (!effectiveSandboxData) {
+      log('No sandbox available - creating new sandbox first...', 'error');
+      try {
+        const newSandboxData = await createSandbox();
+        if (newSandboxData) {
+          // Wait for state to update
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Retry with new sandbox data
+          return applyGeneratedCode(code, isEdit, newSandboxData);
+        } else {
+          log('Failed to create sandbox', 'error');
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('[applyGeneratedCode] Failed to create sandbox:', error);
+        log('Failed to create sandbox for code application', 'error');
+        setLoading(false);
+        return;
+      }
+    }
+    
     try {
       // Show progress component instead of individual messages
       setCodeApplicationState({ stage: 'analyzing' });
@@ -663,7 +687,6 @@ Tip: I automatically detect and install npm packages from your code imports (lik
       }
       
       // Use streaming endpoint for real-time feedback
-      const effectiveSandboxData = overrideSandboxData || sandboxData;
       const response = await fetch('/api/apply-ai-code-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -988,7 +1011,8 @@ Tip: I automatically detect and install npm packages from your code imports (lik
           const refreshDelay = appConfig.codeApplication.defaultRefreshDelay; // Allow Vite to process changes
           
           setTimeout(() => {
-            const currentSandboxData = effectiveSandboxData;
+            // Use the most current sandbox data available
+            const currentSandboxData = overrideSandboxData || sandboxData;
             if (iframeRef.current && currentSandboxData?.url) {
               console.log('[home] Refreshing iframe after code application...');
               
@@ -996,17 +1020,22 @@ Tip: I automatically detect and install npm packages from your code imports (lik
               const urlWithTimestamp = `${currentSandboxData.url}?t=${Date.now()}&applied=true`;
               iframeRef.current.src = urlWithTimestamp;
               
-              // Method 2: Force reload after a short delay
+              // Method 2: Force reload after a delay
               setTimeout(() => {
-                try {
-                  if (iframeRef.current?.contentWindow) {
-                    iframeRef.current.contentWindow.location.reload();
-                    console.log('[home] Force reloaded iframe content');
+                if (iframeRef.current) {
+                  console.log('[applyGeneratedCode] Method 2: Attempting iframe reload...');
+                  try {
+                    // Try to reload the iframe content (may fail due to CORS)
+                    if (iframeRef.current.contentWindow) {
+                      iframeRef.current.contentWindow.location.reload();
+                    }
+                  } catch (corsError) {
+                    console.log('[applyGeneratedCode] CORS error on reload, using src change instead');
+                    // Fallback: Change src to force reload
+                    const currentSrc = iframeRef.current.src;
+                    iframeRef.current.src = currentSrc;
                   }
-                } catch (e) {
-                  console.log('[home] Could not reload iframe (cross-origin):', e);
                 }
-                // Reload completed
               }, 1000);
             }
           }, refreshDelay);
